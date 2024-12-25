@@ -101,6 +101,9 @@ sessionFields = ["issues", "customIssuesV2"]
 [mutations.accessDates]
 sessionFields = ["accessDates"]
 
+[mutations.workOrderTickets]
+sessionFields = ["workOrder"]
+
 [mutations.landlordDetailsV2]
 sessionFields = ["landlordDetails"]
 

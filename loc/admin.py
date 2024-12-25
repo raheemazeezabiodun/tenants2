@@ -29,6 +29,19 @@ class AddressDetailsForm(forms.ModelForm):
         fields = "__all__"
 
 
+@admin.register(models.WorkOrder)
+class WorkOrderAdmin(admin.ModelAdmin):
+    list_display = ['ticket_number', 'user']
+
+
+
+class WorkOrderInline(admin.TabularInline):
+    model = models.WorkOrder
+    verbose_name = "Letter of complaint work order ticket"
+    verbose_name_plural = "Letter of complaint work order tickets"
+    extra = 1
+
+
 @admin.register(models.AddressDetails)
 class AddressDetailsAdmin(admin.ModelAdmin):
     # We want the address to be at the top, which is why we're listing
@@ -251,6 +264,7 @@ class LOCUserAdmin(UserProxyAdmin):
         IssueInline,
         CustomIssueInline,
         AccessDateInline,
+        WorkOrderInline,
         LandlordDetailsInline,
         LetterRequestInline,
         ArchivedLetterRequestInline,

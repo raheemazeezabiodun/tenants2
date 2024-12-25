@@ -40,6 +40,7 @@ type AreaIssues = {
 type LocContentProps = BaseLetterContentProps & {
   issues: AreaIssues[];
   accessDates: GraphQLDate[];
+  workOrderTickets: string[] | null;
   hasCalled311: boolean | null;
 };
 
@@ -99,6 +100,21 @@ const AccessDates: React.FC<LocContentProps> = (props) => (
   </div>
 );
 
+const WorkOrderTickets: React.FC<LocContentProps> = (props) => (
+  <div className="jf-avoid-page-breaks-within">
+    <h2>Work Order Repair Tickets</h2>
+    <p>
+      I have documented these issues in the past by submitting work tickets to management.
+      I've included at least one work ticket(s) for your reference:
+    </p>
+    <ul>
+      {props.workOrderTickets.map((ticket) => (
+        <li key={ticket}>{ticket}</li>
+      ))}
+    </ul>
+  </div>
+);
+
 function hasHeatIssues(issues: AreaIssues[]): boolean {
   return issues.some((areaIssues) =>
     areaIssues.issues.some(
@@ -141,6 +157,7 @@ const LetterBody: React.FC<LocContentProps> = (props) => (
   <>
     {props.issues.length > 0 && <AreaIssues {...props} />}
     {props.accessDates.length > 0 && <AccessDates {...props} />}
+    {props.workOrderTickets.length && <WorkOrderTickets {...props} />}
     <Requirements {...props} />
     {props.hasCalled311 && <PreviousReliefAttempts />}
   </>
@@ -242,6 +259,7 @@ export function getLocContentPropsFromSession(
     ...baseProps,
     issues: getIssuesFromSession(session),
     accessDates: session.accessDates,
+    workOrderTickets: session.workOrder,
     hasCalled311: onb.hasCalled311,
   };
 }

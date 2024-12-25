@@ -4,12 +4,14 @@ from graphql import ResolveInfo
 import graphene
 from graphene_django.types import DjangoObjectType
 from django.contrib.staticfiles.storage import staticfiles_storage
+from django.forms import formset_factory
 
 from project.util.session_mutation import SessionFormMutation
 from project.util.model_form_util import OneToOneUserModelFormMutation
 from project.util.email_attachment import EmailAttachmentMutation
 from project.util.site_util import absolutify_url
 from project.util.graphql_mailing_address import GraphQLMailingAddress
+from project.util.django_graphql_forms import DjangoFormMutation
 from project import slack, schema_registry, common_data
 from project.util import lob_api
 from . import forms, models, email_letter, views, tasks
@@ -19,8 +21,7 @@ from .landlord_info_mutation import (
 )
 from airtable.sync import sync_user as sync_user_with_airtable
 
-MAX_RECIPIENTS = common_data.load_json("email-attachment-validation.json")["maxRecipients"]
-
+MAX_TICKET_NUMBERS = 10
 
 @schema_registry.register_mutation
 class EmailLetter(EmailAttachmentMutation):
@@ -50,17 +51,32 @@ class AccessDates(SessionFormMutation):
         models.AccessDate.objects.set_for_user(request.user, form.get_cleaned_dates())
         return cls.mutation_success()
 
+
 @schema_registry.register_mutation
-class WorkOrderTickets(SessionFormMutation):
-    class Meta: 
-        form_class = forms.WorkOrderForm
+class WorkOrderTickets(DjangoFormMutation):
+    login_required = True
+
+    class Meta:
+        formset_classes = {
+            "ticket_numbers": formset_factory(
+                forms.WorkOrderForm,
+                max_num=MAX_TICKET_NUMBERS,
+                validate_max=True,
+                formset=forms.WorkOrderFormFormset,
+            )
+        }
+
+    ticket_numbers = graphene.List(graphene.NonNull(graphene.String))
 
     @classmethod
-    def perform_mutate(cls, form: forms.WorkOrderForm, info: ResolveInfo):    
+    def perform_mutate(cls, form: forms.WorkOrderForm, info: ResolveInfo):
         request = info.context
-        models.WorkOrder.objects.set_for_user(request.user)
-        return cls.mutation_success()
-        
+        # ticket_numbers = [f.cleaned_data["ticket_number"] for f in form.formsets["ticket_numbers"] if f.cleaned_data['ticket_number'].strip()]
+        ticket_numbers = form.formsets['ticket_numbers'].get_cleaned_data()
+        models.WorkOrder.objects.set_for_user(request.user, ticket_numbers)
+        return cls(errors=[], ticket_numbers=ticket_numbers)
+
+
 @schema_registry.register_mutation
 class LandlordDetailsV2(OneToOneUserModelFormMutation):
     class Meta:
@@ -176,7 +192,7 @@ class LetterRequestType(DjangoObjectType):
 @schema_registry.register_session_info
 class LocSessionInfo:
     access_dates = graphene.List(graphene.NonNull(graphene.types.String), required=True)
-    # add work order tickets here to session 
+    # add work order tickets here to session
     # add work order resolver
     work_order =  graphene.List(graphene.NonNull(graphene.types.String))
     landlord_details = graphene.Field(LandlordDetailsType, resolver=LandlordDetailsV2.resolve)
@@ -187,6 +203,12 @@ class LocSessionInfo:
         if not user.is_authenticated:
             return []
         return models.AccessDate.objects.get_for_user(user)
+
+    def resolve_work_order(self, info: ResolveInfo):
+        user = info.context.user
+        if not user.is_authenticated:
+            return []
+        return models.WorkOrder.objects.get_for_user(user)
 
 
 class LetterStyles(graphene.ObjectType):

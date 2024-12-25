@@ -65,6 +65,16 @@ class AccessDate(models.Model):
     objects = AccessDateManager()
 
 
+class WorkOrderManager(models.Manager):
+    @transaction.atomic
+    def set_for_user(self, user: JustfixUser, ticket_numbers: List[str]) -> None:
+        self.filter(user=user).delete()
+        self.bulk_create(WorkOrder(user=user, ticket_number=ticket_number) for ticket_number in ticket_numbers)
+
+    def get_for_user(self, user: JustfixUser) -> List[datetime.date]:
+        return [work_order.ticket_number for work_order in user.work_order.all()]
+
+
 class WorkOrder(models.Model):
     user = models.ForeignKey(
         JustfixUser,
@@ -74,6 +84,10 @@ class WorkOrder(models.Model):
     )
 
     ticket_number = models.CharField(blank=True, max_length=10, help_text="NYCHA work order ticket number")
+
+    objects = WorkOrderManager()
+
+
 
 class LandlordDetails(MailingAddress):
     """
