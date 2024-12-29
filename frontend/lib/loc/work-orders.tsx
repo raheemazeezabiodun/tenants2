@@ -27,7 +27,6 @@ export type WorkOrderTicketFormProps = {
 };
 
 
-
 const MAXIMUM_TICKETS = 10
 
 function labelForTicketNumbers(i: number): string {

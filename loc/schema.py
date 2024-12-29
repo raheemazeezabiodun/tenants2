@@ -53,7 +53,7 @@ class AccessDates(SessionFormMutation):
 
 
 @schema_registry.register_mutation
-class WorkOrderTickets(DjangoFormMutation):
+class WorkOrderTickets(SessionFormMutation):
     login_required = True
 
     class Meta:
@@ -74,7 +74,7 @@ class WorkOrderTickets(DjangoFormMutation):
         # ticket_numbers = [f.cleaned_data["ticket_number"] for f in form.formsets["ticket_numbers"] if f.cleaned_data['ticket_number'].strip()]
         ticket_numbers = form.formsets['ticket_numbers'].get_cleaned_data()
         models.WorkOrder.objects.set_for_user(request.user, ticket_numbers)
-        return cls(errors=[], ticket_numbers=ticket_numbers)
+        return cls.mutation_success()
 
 
 @schema_registry.register_mutation

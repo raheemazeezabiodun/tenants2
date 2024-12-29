@@ -7564,6 +7564,18 @@
               "deprecationReason": null,
               "description": null,
               "isDeprecated": false,
+              "name": "session",
+              "type": {
+                "kind": "OBJECT",
+                "name": "SessionInfo",
+                "ofType": null
+              }
+            },
+            {
+              "args": [],
+              "deprecationReason": null,
+              "description": null,
+              "isDeprecated": false,
               "name": "ticketNumbers",
               "type": {
                 "kind": "LIST",
