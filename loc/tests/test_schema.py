@@ -19,6 +19,21 @@ DEFAULT_ACCESS_DATES_INPUT = {
     "date3": "",
 }
 
+DEFAULT_WORK_ORDER_INPUT = {
+    "noTicket": False,
+    "ticketNumbers": [
+        {
+            "ticketNumber": "NDF"
+        },
+        {
+            "ticketNumber": "NDS"
+        },
+        {
+            "ticketNumber": "NDZ"
+        }
+    ]
+}
+
 
 DEFAULT_LANDLORD_DETAILS_V2_INPUT = {
     "name": "",
@@ -51,6 +66,26 @@ def execute_ad_mutation(graphql_client, **input):
                 }
                 session {
                     accessDates
+                }
+            }
+        }
+        """,
+        variables={"input": input},
+    )["data"]["output"]
+
+
+def execute_work_order_mutation(graphql_client, **input):
+    input = {**DEFAULT_WORK_ORDER_INPUT, **input}
+    return graphql_client.execute(
+        """
+        mutation MyMutation($input: WorkOrderTicketsInput!) {
+            output: workOrderTickets(input: $input) {
+                errors {
+                    field
+                    messages
+                }
+                session {
+                    workOrder
                 }
             }
         }
@@ -133,6 +168,43 @@ def test_access_dates_requires_auth(graphql_client):
 def test_access_dates_is_empty_when_unauthenticated(graphql_client):
     result = graphql_client.execute("query { session { accessDates } }")
     assert result["data"]["session"]["accessDates"] == []
+
+
+########## WORK ORDER ###########
+
+
+@pytest.mark.django_db
+def test_work_order_works(graphql_client):
+    graphql_client.request.user = UserFactory.create()
+
+    result = execute_work_order_mutation(graphql_client, **{})
+    assert result["errors"] == []
+    assert result["session"]["workOrder"] == ['NDF', 'NDS', 'NDZ']
+
+    result = execute_work_order_mutation(graphql_client, **{
+        "noTicket": False,
+        "ticketNumbers": [
+            {
+                "ticketNumber": "NEW"
+            }
+        ]
+    })
+    assert result["errors"] == []
+    assert result["session"]["workOrder"] == ['NEW']
+
+
+def test_work_order_requires_auth(graphql_client):
+    result = execute_work_order_mutation(graphql_client)
+    assert result["errors"] == [
+        {"field": "__all__", "messages": ["You do not have permission to use this form!"]}
+    ]
+
+
+def test_work_order_is_empty_when_unauthenticated(graphql_client):
+    result = graphql_client.execute("query { session { workOrder } }")
+    assert result["data"]["session"]["workOrder"] == []
+
+############### LANDLORD DETAILS #############
 
 
 @pytest.mark.django_db

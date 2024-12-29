@@ -4,7 +4,6 @@ mutation WorkOrderTicketsMutation($input: WorkOrderTicketsInput!) {
     errors { ...ExtendedFormFieldErrors },
     session {
       workOrder
-    },
-    ticketNumbers
+    }
   }
 }

@@ -9,6 +9,7 @@ from onboarding.tests.factories import OnboardingInfoFactory
 from loc.models import (
     AddressDetails,
     AccessDate,
+    WorkOrder,
     LetterRequest,
     ArchivedLetterRequest,
     LandlordDetails,
@@ -33,6 +34,64 @@ def test_set_for_user_works():
 
     AccessDate.objects.set_for_user(user, [date(2011, 2, 2)])
     assert AccessDate.objects.get_for_user(user) == [date(2011, 2, 2)]
+
+
+@pytest.fixture
+def user(db):
+    """Fixture to create a test user."""
+    return UserFactory.create()
+
+
+@pytest.fixture
+def ticket_numbers():
+    """Fixture to provide sample ticket numbers."""
+    return ["ABC123", "DEF456", "GHI789"]
+
+
+@pytest.mark.django_db
+def test_set_for_user_creates_work_orders(user, ticket_numbers):
+    """Test that `set_for_user` creates work orders for a user."""
+    WorkOrder.objects.set_for_user(user, ticket_numbers)
+
+    work_orders = WorkOrder.objects.filter(user=user)
+    assert work_orders.count() == len(ticket_numbers)
+    assert sorted([wo.ticket_number for wo in work_orders]) == sorted(ticket_numbers)
+
+
+@pytest.mark.django_db
+def test_set_for_user_replaces_existing_work_orders(user, ticket_numbers):
+    """Test that `set_for_user` replaces existing work orders for a user."""
+    # Create initial work orders
+    initial_ticket_numbers = ["OLD001", "OLD002"]
+    WorkOrder.objects.set_for_user(user, initial_ticket_numbers)
+
+    # Replace with new work orders
+    WorkOrder.objects.set_for_user(user, ticket_numbers)
+
+    work_orders = WorkOrder.objects.filter(user=user)
+    assert work_orders.count() == len(ticket_numbers)
+    assert sorted([wo.ticket_number for wo in work_orders]) == sorted(ticket_numbers)
+
+
+@pytest.mark.django_db
+def test_get_for_user_returns_ticket_numbers(user, ticket_numbers):
+    """Test that `get_for_user` returns a list of ticket numbers for a user."""
+    WorkOrder.objects.set_for_user(user, ticket_numbers)
+
+    retrieved_ticket_numbers = WorkOrder.objects.get_for_user(user)
+    assert sorted(retrieved_ticket_numbers) == sorted(ticket_numbers)
+
+
+@pytest.mark.django_db
+def test_set_for_user_with_empty_ticket_numbers(user, ticket_numbers):
+    """Test that `set_for_user` deletes all work orders when ticket_numbers is empty."""
+    WorkOrder.objects.set_for_user(user, ticket_numbers)
+
+    # Call with an empty list
+    WorkOrder.objects.set_for_user(user, [])
+
+    work_orders = WorkOrder.objects.filter(user=user)
+    assert work_orders.count() == 0
 
 
 def test_letter_request_str_works_when_fields_are_not_set():

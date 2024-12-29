@@ -55,22 +55,33 @@ class AccessDatesForm(forms.Form):
         return result
 
 
-class WorkOrderForm(forms.Form):
+class TicketNumberForm(forms.Form):
     ticket_number = forms.CharField(label="Work order ticket", max_length=10, required=False)
 
-    def clean(self):
-        ticket_number = self.cleaned_data.get('ticket_number')
-        if ticket_number and re.search(r'[^a-zA-Z0-9]', ticket_number):
-            raise ValidationError("Ticket number must not contain special characters.")
 
-        super().clean()
+class WorkOrderForm(forms.Form):
+    no_ticket =forms.BooleanField(required=False)
+
 
 class WorkOrderFormFormset(forms.BaseFormSet):
-    def get_cleaned_data(self):
+    def clean(self):
+        super().clean()
+        forms = self.forms
+        for form in forms:
+            ticket_number = form.cleaned_data.get('ticket_number')
+            if ticket_number and re.search(r'[^a-zA-Z0-9]', ticket_number):
+                raise ValidationError("Ticket number must not contain special characters.")
+
+    def get_cleaned_data(self, is_no_ticket_number_checked):
         result = []
         for i in self.cleaned_data:
             result.append(i['ticket_number'])
+
+        if not is_no_ticket_number_checked and not result:
+            return []
+
         return result
+
 
 def validate_non_stupid_name(name: str):
     if name.lower().startswith("united states"):

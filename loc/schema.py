@@ -57,22 +57,27 @@ class WorkOrderTickets(SessionFormMutation):
     login_required = True
 
     class Meta:
+        form_class = forms.WorkOrderForm
         formset_classes = {
             "ticket_numbers": formset_factory(
-                forms.WorkOrderForm,
+                forms.TicketNumberForm,
                 max_num=MAX_TICKET_NUMBERS,
                 validate_max=True,
                 formset=forms.WorkOrderFormFormset,
             )
         }
 
-    ticket_numbers = graphene.List(graphene.NonNull(graphene.String))
-
     @classmethod
-    def perform_mutate(cls, form: forms.WorkOrderForm, info: ResolveInfo):
+    def perform_mutate(cls, form: forms.TicketNumberForm, info: ResolveInfo):
         request = info.context
-        # ticket_numbers = [f.cleaned_data["ticket_number"] for f in form.formsets["ticket_numbers"] if f.cleaned_data['ticket_number'].strip()]
-        ticket_numbers = form.formsets['ticket_numbers'].get_cleaned_data()
+        no_ticket_selected = form.base_form.cleaned_data['no_ticket']
+        ticket_numbers = form.formsets['ticket_numbers'].get_cleaned_data(
+            is_no_ticket_number_checked=no_ticket_selected
+        )
+        if not ticket_numbers and not no_ticket_selected:
+            return cls.make_error(
+                "You must either supply a ticket number or check the I don't have a ticket number"
+                )
         models.WorkOrder.objects.set_for_user(request.user, ticket_numbers)
         return cls.mutation_success()
 
