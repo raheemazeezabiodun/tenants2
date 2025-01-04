@@ -24,6 +24,7 @@ fragment AllSessionInfo on SessionInfo {
   norentUpcomingLetterRentPeriods,
   accessDates,
   workOrder,
+  hasInitiatedWorkOrder,
   landlordDetails { ...LandlordDetailsType },
   letterRequest {
     mailChoice,

@@ -22,6 +22,7 @@ from .landlord_info_mutation import (
 from airtable.sync import sync_user as sync_user_with_airtable
 
 MAX_TICKET_NUMBERS = 10
+HAS_INITIATED_WORK_ORDER_SESSION_KEY = 'HAS_INITIATED_WORK_ORDER'
 
 @schema_registry.register_mutation
 class EmailLetter(EmailAttachmentMutation):
@@ -70,8 +71,12 @@ class WorkOrderTickets(SessionFormMutation):
     @classmethod
     def perform_mutate(cls, form: forms.TicketNumberForm, info: ResolveInfo):
         request = info.context
-        no_ticket_selected = form.base_form.cleaned_data['no_ticket']
-        ticket_numbers = form.formsets['ticket_numbers'].get_cleaned_data(
+
+        work_order_form: forms.WorkOrderForm = form.base_form
+        ticket_numbers_formset: forms.WorkOrderFormFormset = form.formsets['ticket_numbers']
+
+        no_ticket_selected = work_order_form.cleaned_data['no_ticket']
+        ticket_numbers = ticket_numbers_formset.get_cleaned_data(
             is_no_ticket_number_checked=no_ticket_selected
         )
         if not ticket_numbers and not no_ticket_selected:
@@ -79,6 +84,7 @@ class WorkOrderTickets(SessionFormMutation):
                 "You must either supply a ticket number or check the I don't have a ticket number"
                 )
         models.WorkOrder.objects.set_for_user(request.user, ticket_numbers)
+        request.session[HAS_INITIATED_WORK_ORDER_SESSION_KEY] = True
         return cls.mutation_success()
 
 
@@ -199,7 +205,8 @@ class LocSessionInfo:
     access_dates = graphene.List(graphene.NonNull(graphene.types.String), required=True)
     # add work order tickets here to session
     # add work order resolver
-    work_order =  graphene.List(graphene.NonNull(graphene.types.String))
+    work_order =  graphene.List(graphene.NonNull(graphene.types.String), required=True)
+    has_initiated_work_order = graphene.Boolean()
     landlord_details = graphene.Field(LandlordDetailsType, resolver=LandlordDetailsV2.resolve)
     letter_request = graphene.Field(LetterRequestType, resolver=LetterRequest.resolve)
 
@@ -213,7 +220,13 @@ class LocSessionInfo:
         user = info.context.user
         if not user.is_authenticated:
             return []
+
         return models.WorkOrder.objects.get_for_user(user)
+
+    def resolve_has_initiated_work_order(self, info: ResolveInfo) -> bool:
+        request = info.context
+        # used for handling the default state of the form
+        return request.session.get(HAS_INITIATED_WORK_ORDER_SESSION_KEY, False)
 
 
 class LetterStyles(graphene.ObjectType):

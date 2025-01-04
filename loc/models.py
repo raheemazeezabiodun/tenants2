@@ -71,7 +71,7 @@ class WorkOrderManager(models.Manager):
         self.filter(user=user).delete()
         self.bulk_create(WorkOrder(user=user, ticket_number=ticket_number) for ticket_number in ticket_numbers)
 
-    def get_for_user(self, user: JustfixUser) -> List[datetime.date]:
+    def get_for_user(self, user: JustfixUser) -> List[str]:
         return [work_order.ticket_number for work_order in user.work_order.all()]
 
 
